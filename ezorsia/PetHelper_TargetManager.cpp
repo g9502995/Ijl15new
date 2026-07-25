@@ -57,7 +57,7 @@ namespace PetHelper {
                 abs(pet.onTopTargetY - ty) <= 15) {
                 // Pet has been sitting within 50/80 px of this item for > 2500 ms
                 // without the game picking it up → treat as unreachable.
-                if (now - pet.onTopSince > 2500) {
+                if (now - pet.onTopSince > 1000) {
                     BlacklistDrop(tx, ty, now);
                     ClearTarget(petIdx);
                     pet.route.valid = false;
@@ -163,7 +163,7 @@ namespace PetHelper {
             if (dy > g_config.maxSearchDistanceY) continue;
             if (dx > g_config.maxSearchDistanceX) continue;
 
-            if (IsBlacklisted(dropX, dropY) && (dx > 80 || dy > 80)) continue;
+            if (IsBlacklisted(dropX, dropY)) continue;
 
             // Not actually resting on a platform (fell into a pit / off the
             // side of the map) - a pet can only ever stand near its X on

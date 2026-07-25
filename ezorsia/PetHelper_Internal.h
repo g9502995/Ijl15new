@@ -60,6 +60,29 @@ typedef void(__thiscall* PFN_SetActive)(void* pThis, int bActive,
     int nMoveAction, void* pFoothold);
 static const PFN_SetActive g_SetActive = (PFN_SetActive)0x9C40E8;
 
+// CPet::OnResolveMoveAction (0x70458C) only ever returns the hang/climb pose
+// (0x1E, ORed with a direction-parity bit from the CVecCtrlPet) when BOTH the
+// pet's own rope pointer AND the owner's rope pointer are attached - i.e. the
+// stock logic only ever shows a pet hanging while mirroring the owner's own
+// climb. For a pet climbing on its own (owner not on a rope) that branch is
+// unreachable no matter what gets attached natively. CVecCtrl::SetActive
+// bypasses that auto-calc entirely when nMoveAction is >= 2 (used as a literal
+// display action instead) - CPet::Update copies it into the sprite state every
+// frame - so passing this literal directly is what DownJump already does with
+// action 4/5 for the down-jump pose.
+static const int PET_ACTION_HANG = 0x1E;
+
+// CUser::IsOnLadderOrRope (0x4ACD7B) - const thiscall, no args. Safe read-only
+// query (just resolves the same secured rope pointer IsOnRope/OnResolveMoveAction
+// use, without mutating anything). Used to detect the owner climbing a rope so
+// our own AI can step aside: the native WorkUpdateActive loop (runs every frame
+// regardless of our hook) auto-attaches and rides the pet along on its own once
+// it sees the owner on a rope and the pet not yet attached - our manual
+// SetActive calls fighting it every frame is what produces the sliding glitch.
+typedef BOOL(__thiscall* PFN_IsOnLadderOrRope)(void* pThis);
+static const PFN_IsOnLadderOrRope g_UserIsOnLadderOrRope =
+    (PFN_IsOnLadderOrRope)0x4ACD7B;
+
 // CVecCtrl::WorkUpdateActive - BASE class physics step. The pet subclass calls
 // this at the end of its own WorkUpdateActive; calling it directly lets us
 // drive the pet without the stock pet AI overwriting our input.
@@ -151,7 +174,7 @@ namespace PetHelper {
         // as a target again. Needs to comfortably outlast how long an item
         // sits on the ground, or a pet just re-discovers the same failure
         // in a loop until the item finally despawns on its own.
-        DWORD dropBlacklistMs = 90000;      // generic give-up / edge-fail rejection
+        DWORD dropBlacklistMs = 60000;      // generic give-up / edge-fail rejection (1 minute)
 
         int   telescopePickupRangeX = 688;
         int   telescopePickupRangeYUp = 128;
@@ -301,6 +324,7 @@ namespace PetHelper {
 
         // Rope climbing animation state
         bool  isClimbingRope = false;
+        int   ropeX = 0;        // rope's true X, held fixed for the whole climb (see ropeSnapTol)
         int   ropeTargetY = 0;
         int   ropeStartY = 0;
         void* ropeTargetFh = NULL;
@@ -317,6 +341,7 @@ namespace PetHelper {
             boosting = false;
 
             isClimbingRope = false;
+            ropeX = 0;
             ropeTargetY = 0;
             ropeStartY = 0;
             ropeTargetFh = NULL;

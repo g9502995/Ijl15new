@@ -116,12 +116,26 @@ namespace PetHelper {
             if (logNow) std::cout << "[T] GetPetPos FAILED\n";
             return false;
         }
+
+        // ---- Owner climbing a rope/ladder: stand down entirely --------------------
+        // The native per-frame update (still running regardless of this hook) will
+        // see the owner attached to a rope and the pet not yet attached, and auto-
+        // attaches + carries the pet along on its own. If we keep driving the pet
+        // with our own SetActive calls at the same time, the two fights every frame
+        // and produces a visible sliding/jittering glitch. Just get out of the way.
+        {
+            void* pOwnerCheck = *(void**)((char*)pCPet + CPET_OWNER);
+            if (pOwnerCheck && g_UserIsOnLadderOrRope(pOwnerCheck)) {
+                if (logNow) std::cout << "[T] owner on rope/ladder, pet AI standing down\n";
+                return false;
+            }
+        }
         // ---- Active rope climbing state step ------------------------------------
         if (pet.isClimbingRope) {
             int distToGoal = abs(petY - pet.ropeTargetY);
             if (distToGoal <= 12) {
                 // Reached destination foothold on rope: complete climb
-                g_SetActive(pThis, 1, petX, pet.ropeTargetY - 5, 0, 0, 0, pet.ropeTargetFh);
+                g_SetActive(pThis, 1, pet.ropeX, pet.ropeTargetY - 5, 0, 0, 0, pet.ropeTargetFh);
                 pet.isClimbingRope = false;
                 pet.ropeTargetFh = NULL;
                 pet.lastMoveT = nowT;
@@ -135,7 +149,9 @@ namespace PetHelper {
                 if ((dy < 0 && nextY < pet.ropeTargetY) || (dy > 0 && nextY > pet.ropeTargetY)) {
                     nextY = pet.ropeTargetY;
                 }
-                g_SetActive(pThis, 1, petX, nextY, 0, 0, 0, NULL);
+                // Held fixed at the rope's true X (not the pet's drifted approach
+                // X) so a wide snap tolerance doesn't leave it climbing off-center.
+                g_SetActive(pThis, 1, pet.ropeX, nextY, 0, 0, PET_ACTION_HANG, NULL);
                 pet.lastMoveT = nowT;
                 if (logNow) std::cout << "[T] rope climbing y=" << nextY << " targetY=" << pet.ropeTargetY << "\n";
                 return true;
@@ -432,6 +448,7 @@ namespace PetHelper {
                     if (ti >= 0 && ti < (int)Pathfinder::fh.size()) {
                         int landY = Pathfinder::YAtX(Pathfinder::fh[ti], step.edge.landingX);
                         pet.isClimbingRope = true;
+                        pet.ropeX = step.edge.takeoffX;
                         pet.ropeStartY = petY;
                         pet.ropeTargetY = landY;
                         pet.ropeTargetFh = Pathfinder::fh[ti].fh;
