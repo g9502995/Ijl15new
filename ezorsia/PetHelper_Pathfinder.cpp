@@ -250,11 +250,19 @@ namespace PetHelper {
 
     int Pathfinder::FindFootholdSpanning(int x, int y, int tol)
     {
+        int bestIdx = -1;
+        int minDiffY = 9999;
         for (int i = 0; i < (int)fh.size(); i++) {
-            if (x < LoX(fh[i]) || x > HiX(fh[i])) continue;
-            if (abs(YAtX(fh[i], x) - y) <= tol) return i;
+            // Allow 20px horizontal margin around foothold bounds for ladders/ropes attached to edges
+            if (x < LoX(fh[i]) - 20 || x > HiX(fh[i]) + 20) continue;
+            int fhY = YAtX(fh[i], Clamp(x, LoX(fh[i]), HiX(fh[i])));
+            int diffY = abs(fhY - y);
+            if (diffY <= tol && diffY < minDiffY) {
+                minDiffY = diffY;
+                bestIdx = i;
+            }
         }
-        return -1;
+        return bestIdx;
     }
 
     void Pathfinder::AddRopeEdges()

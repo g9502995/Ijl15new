@@ -176,7 +176,7 @@ namespace PetHelper {
         int   costJump = 90;
         int   costDrop = 25;
         int   costRope = 70;
-        int   ropeSnapTol = 15;
+        int   ropeSnapTol = 45;
 
         bool  useWallCheck = true;
         int   targetCostCandidates = 5;
