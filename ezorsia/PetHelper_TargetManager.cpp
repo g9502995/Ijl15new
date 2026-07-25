@@ -11,6 +11,7 @@ namespace PetHelper {
     int TargetManager::currentPetIdx = -1;
     int TargetManager::poolScanned = 0;
     std::vector<DropBlacklistEntry> TargetManager::dropBlacklist;
+    std::vector<TargetFailEntry>    TargetManager::failHistory;
 
     void TargetManager::Init() {
         for (int i = 0; i < 3; i++) {
@@ -18,7 +19,49 @@ namespace PetHelper {
         }
     }
 
+    // Recent-failure memory outlives the drop's own blacklist entry (a few
+    // multiples of dropBlacklistMs) so a target that just timed off the hard
+    // blacklist still scores worse for a while instead of looking brand new.
+    static void NoteTargetFailure(int x, int y, DWORD now) {
+        DWORD expire = now + g_config.dropBlacklistMs * 3;
+        for (size_t i = 0; i < TargetManager::failHistory.size(); i++) {
+            TargetFailEntry& e = TargetManager::failHistory[i];
+            if (e.x == x && e.y == y) {
+                if (e.count < 1000) e.count++;
+                e.expire = expire;
+                return;
+            }
+        }
+        TargetFailEntry e;
+        e.x = x; e.y = y; e.count = 1; e.expire = expire;
+        TargetManager::failHistory.push_back(e);
+    }
+
+    int TargetManager::RecentFailureCount(int x, int y, DWORD now) {
+        for (size_t i = 0; i < failHistory.size(); i++) {
+            const TargetFailEntry& e = failHistory[i];
+            if (e.x == x && e.y == y)
+                return (now <= e.expire) ? e.count : 0;
+        }
+        return 0;
+    }
+
+    bool TargetManager::IsLockedByOtherPet(int excludePetIdx, int x, int y, int* outOwnerPetIdx) {
+        for (int p = 0; p < 3; p++) {
+            if (p == excludePetIdx) continue;
+            if (g_pets[p].targetX == -1) continue;
+            if (abs(g_pets[p].targetX - x) <= 10 && abs(g_pets[p].targetY - y) <= 10) {
+                if (outOwnerPetIdx) *outOwnerPetIdx = p;
+                return true;
+            }
+        }
+        if (outOwnerPetIdx) *outOwnerPetIdx = -1;
+        return false;
+    }
+
     void TargetManager::BlacklistDrop(int x, int y, DWORD now, DWORD durationMs) {
+        NoteTargetFailure(x, y, now);
+
         DWORD d = durationMs ? durationMs : g_config.dropBlacklistMs;
         DWORD newExpire = (d == DROP_BLACKLIST_FOREVER) ? DROP_BLACKLIST_FOREVER : now + d;
 
@@ -118,11 +161,16 @@ namespace PetHelper {
     std::vector<TargetDrop> TargetManager::CollectSortedDrops(int fromX, int fromY,
         bool logNow, DWORD now)
     {
-        // O(N) cleanup of expired drop blacklist entries
+        // O(N) cleanup of expired drop blacklist / recent-failure entries
         dropBlacklist.erase(
             std::remove_if(dropBlacklist.begin(), dropBlacklist.end(),
                 [now](const DropBlacklistEntry& e) { return now > e.expire; }),
             dropBlacklist.end()
+        );
+        failHistory.erase(
+            std::remove_if(failHistory.begin(), failHistory.end(),
+                [now](const TargetFailEntry& e) { return now > e.expire; }),
+            failHistory.end()
         );
 
         std::vector<TargetDrop> drops;

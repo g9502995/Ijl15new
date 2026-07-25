@@ -213,6 +213,20 @@ namespace PetHelper {
         int   edgeFailThreshold = 2;
         int   edgeFailPenalty = 150;
 
+        // ---------- Smart decision v1 : edge reliability (mid/long-term) ---------------
+        // EdgeReliabilityCost() blends these into A*'s edge cost alongside the
+        // short-term failCount/blacklist mechanism above. Defaults are kept
+        // deliberately mild so existing routing behavior doesn't shift much
+        // until an edge has actually built up a real track record.
+        double reliabilityWeight = 100.0;  // percent-scale on the raw reliability cost (100 = full effect)
+        int    edgeSuccessBonus = 15;    // max cost discount for a proven-reliable edge
+        int    edgeFailurePenalty = 60;    // cost added per 10% of long-term failure rate (once enough samples)
+
+        // ---------- Smart decision v1 : target scoring ----------------------------------
+        int   contestedTargetPenalty = 260;   // added when another pet already locked this drop
+        int   unreachableTargetPenalty = 5000;  // added when no route exists to this drop at all
+        DWORD targetScoreCacheMs = 300;    // reuse a candidate's computed score/route cost this long
+
         // ---------- Movement -----------------------------------------------------------
         int   arriveTol = 10;   // within this of the waypoint -> stand still
         int   dirHysteresis = 26;   // must exceed this to reverse direction
@@ -253,6 +267,11 @@ namespace PetHelper {
     struct DropBlacklistEntry { int x, y; DWORD expire; };
     struct BlacklistEntry { int ia, ib; DWORD expire; };
 
+    // Recent-failure memory for a drop coordinate, kept independently of
+    // dropBlacklist so a target that already timed off the hard blacklist
+    // still gets scored down for a while instead of looking brand new.
+    struct TargetFailEntry { int x, y; int count; DWORD expire; };
+
     // Sentinel expire value: never times out (cleared explicitly on map
     // change instead - see Hooked_CField_Init). Used for drops confirmed to
     // be off any platform, which is a geometric fact that won't change.
@@ -267,6 +286,13 @@ namespace PetHelper {
         int landingX;   // expected landing X on the destination
         int cost;
         int failCount = 0;  // consecutive-attempt reliability penalty, see edgeFailPenalty
+
+        // Mid/long-term experience stats (see EdgeReliabilityCost). Rebuilt
+        // from scratch whenever BuildAdjacency() runs (map change / foothold
+        // cache rebuild), so nothing here ever carries over across maps.
+        unsigned short successCount = 0;
+        unsigned short failureCount = 0;
+        float avgDurationMs = 0.0f;   // EWMA of completion time for a resolved attempt
     };
 
     struct RouteStep {
@@ -388,6 +414,7 @@ namespace PetHelper {
         static int poolScanned;
 
         static std::vector<DropBlacklistEntry> dropBlacklist;
+        static std::vector<TargetFailEntry>    failHistory;
 
         static void Init();
         // durationMs = 0 uses g_config.dropBlacklistMs (the generic case).
@@ -398,6 +425,19 @@ namespace PetHelper {
         static void LockTarget(int petIdx, int tx, int ty, DWORD now);
         static void ClearTarget(int petIdx);
         static void ExpireLock(int petIdx, DWORD now);
+
+        // True when some pet other than excludePetIdx currently has (x,y)
+        // locked as its target, using the same 10px coordinate tolerance as
+        // LockTarget/CollectSortedDrops.
+        static bool IsLockedByOtherPet(int excludePetIdx, int x, int y,
+            int* outOwnerPetIdx = NULL);
+
+        // Recent-failure memory, piggybacked on BlacklistDrop (every call
+        // site of BlacklistDrop already represents a give-up/unpickable/
+        // repeated-edge-fail event). Outlives the drop's own blacklist entry
+        // so a target that just came back into rotation still scores worse
+        // for a while instead of looking brand new.
+        static int  RecentFailureCount(int x, int y, DWORD now);
 
         static std::vector<TargetDrop> CollectSortedDrops(int fromX, int fromY,
             bool logNow, DWORD now);
@@ -469,9 +509,22 @@ namespace PetHelper {
         static bool IsLinkBlacklisted(int ia, int ib);
         static void BlacklistLink(void* pFhA, void* pFhB, DWORD now);
         // Adjusts adj[fromIdx]'s edge(s) landing on toIdx: success decays
-        // failCount by 1 (floor 0), failure raises it by 1. Called once a
-        // pending jump/down-jump attempt is resolved.
-        static void RecordEdgeOutcome(int fromIdx, int toIdx, bool success);
+        // failCount by 1 (floor 0) and bumps successCount/avgDurationMs;
+        // failure raises failCount and bumps failureCount. Called once a
+        // pending jump/down-jump attempt is resolved. durationMs is the time
+        // from arming the attempt to it resolving (0 = unknown, skips the
+        // EWMA update); logNow prints the edge's updated stats.
+        static void RecordEdgeOutcome(int fromIdx, int toIdx, bool success,
+            DWORD durationMs = 0, bool logNow = false);
+
+        // Mid/long-term cost adjustment from an edge's successCount/
+        // failureCount/avgDurationMs (see PetHelperConfig's reliability
+        // knobs). Returns 0 when there aren't enough samples yet, so a
+        // freshly-seen edge is never over-penalized; the discount for a
+        // proven-reliable edge is floor-limited so reliability can never
+        // make an edge look free or negative-cost.
+        static int EdgeReliabilityCost(const Edge& e);
+
         static bool MakeEdge(int ia, int ib, Edge& out);
         static void BuildAdjacency();
         static void EnumLadders(std::vector<LadderNode>& out);
@@ -512,6 +565,58 @@ namespace PetHelper {
         // Turn a desired X into a direction, with a dead zone and hysteresis so the
         // pet stops instead of flickering when it is already close enough.
         static int SteerTo(int petIdx, int petX, int wantX);
+    };
+
+    // ===========================================================================
+    //  TargetSelector - composite scoring for candidate drops. Replaces
+    //  picking purely by A* cost among the nearest few: score = routeCost
+    //  (+ unreachable/contested/recent-failure penalties) (- reachable
+    //  bonus). Lives in its own file (PetHelper_TargetScoring.cpp) so
+    //  MyPetAI_Update_Inner doesn't have to grow to host it.
+    // ===========================================================================
+    class TargetSelector {
+    public:
+        struct ScoredCandidate {
+            int  x, y;
+            int  routeCost;
+            int  score;
+            bool reachable;
+            bool contested;
+        };
+
+        // Scores up to g_config.targetCostCandidates entries from `drops`
+        // (already distance-sorted) for petIdx starting at startFh, and
+        // writes the best one's coordinates to outX/outY. Returns false
+        // (outX/outY left untouched) only when every considered candidate is
+        // unreachable - the caller should fall back to following the owner.
+        static bool SelectBestTarget(int petIdx, void* startFh,
+            const std::vector<TargetDrop>& drops, DWORD now, bool logNow,
+            int& outX, int& outY);
+
+        // Drops cached scores/routes - called on map change so stale A*
+        // results from the previous map never leak into a new one.
+        static void ClearCache();
+
+        // Debug/ImGui-only: last cached score for petIdx's current target,
+        // if still fresh (now - entry.time < targetScoreCacheMs). Never
+        // triggers a fresh A* run on its own.
+        static bool GetCachedScore(int petIdx, int x, int y, DWORD now, ScoredCandidate& out);
+
+    private:
+        struct ScoreCacheEntry {
+            int   petIdx;
+            int   x, y;
+            void* startFh;   // routeCost is only valid for this start platform
+            int   score;
+            int   routeCost;
+            bool  reachable;
+            bool  contested;
+            DWORD time;
+        };
+        static std::vector<ScoreCacheEntry> s_cache;
+
+        static bool ScoreTarget(int petIdx, void* startFh, const TargetDrop& d,
+            DWORD now, bool logNow, ScoredCandidate& out);
     };
 
     // ---------- Route cache helpers (PetHelper_Controller.cpp) ---------------------

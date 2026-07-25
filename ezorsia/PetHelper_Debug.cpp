@@ -41,6 +41,43 @@ namespace PetHelper {
             ImGui::Text("target=(%d,%d) route steps=%d telescope=%s",
                 pet.targetX, pet.targetY, (int)pet.route.steps.size(),
                 pet.hasTelescope ? "yes" : "no");
+
+            // Smart-decision v1 stats: last scored candidate for the current
+            // target (if still cached), plus success rate across the edges
+            // making up the currently planned route.
+            if (pet.targetX != -1) {
+                TargetSelector::ScoredCandidate sc;
+                DWORD nowDbg = GetTickCount();
+                if (TargetSelector::GetCachedScore(i, pet.targetX, pet.targetY, nowDbg, sc)) {
+                    ImGui::Text("    score=%d routeCost=%d reachable=%s contested=%s",
+                        sc.score, sc.routeCost, sc.reachable ? "yes" : "no",
+                        sc.contested ? "yes" : "no");
+                } else {
+                    ImGui::TextDisabled("    (no cached score yet)");
+                }
+            }
+
+            if (pet.route.valid && !pet.route.steps.empty()) {
+                int edgeCount = 0, sumSuccess = 0, sumFail = 0;
+                int routeCost = Pathfinder::RouteCost(pet.route.steps);
+                for (size_t k = 0; k < pet.route.steps.size(); k++) {
+                    if (!pet.route.steps[k].hasEdge) continue;
+                    const Edge& e = pet.route.steps[k].edge;
+                    edgeCount++;
+                    sumSuccess += e.successCount;
+                    sumFail += e.failureCount;
+                }
+                if (edgeCount > 0) {
+                    int totalAttempts = sumSuccess + sumFail;
+                    if (totalAttempts > 0) {
+                        double rate = 100.0 * sumSuccess / totalAttempts;
+                        ImGui::Text("    route cost=%d edges=%d successRate=%.0f%% (%d/%d)",
+                            routeCost, edgeCount, rate, sumSuccess, totalAttempts);
+                    } else {
+                        ImGui::Text("    route cost=%d edges=%d (no history yet)", routeCost, edgeCount);
+                    }
+                }
+            }
         }
         ImGui::Separator();
 

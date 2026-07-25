@@ -94,18 +94,66 @@ namespace PetHelper {
         }
     }
 
-    void Pathfinder::RecordEdgeOutcome(int fromIdx, int toIdx, bool success) {
+    void Pathfinder::RecordEdgeOutcome(int fromIdx, int toIdx, bool success,
+        DWORD durationMs, bool logNow) {
         if (fromIdx < 0 || fromIdx >= (int)adj.size()) return;
         std::vector<Edge>& es = adj[fromIdx];
         for (size_t k = 0; k < es.size(); k++) {
             if (es[k].to != toIdx) continue;
+            Edge& e = es[k];
             if (success) {
-                if (es[k].failCount > 0) es[k].failCount--;
-            } else if (es[k].failCount < 1000) {
-                es[k].failCount++;
+                if (e.failCount > 0) e.failCount--;
+                if (e.successCount < 60000) e.successCount++;
+                if (durationMs > 0) {
+                    e.avgDurationMs = (e.avgDurationMs <= 0.0f)
+                        ? (float)durationMs
+                        : (e.avgDurationMs * 0.8f + (float)durationMs * 0.2f);
+                }
+            } else {
+                if (e.failCount < 1000) e.failCount++;
+                if (e.failureCount < 60000) e.failureCount++;
+            }
+            if (logNow) {
+                std::cout << "[EdgeStat] fh" << fromIdx << "->fh" << toIdx
+                    << " ok=" << e.successCount << " bad=" << e.failureCount
+                    << " avgMs=" << (int)e.avgDurationMs
+                    << " streak=" << e.failCount
+                    << " reliabilityCost=" << EdgeReliabilityCost(e) << "\n";
             }
             break;
         }
+    }
+
+    // Blends an edge's mid/long-term successCount/failureCount/avgDurationMs
+    // into A*'s cost. Kept separate from failCount/edgeFailPenalty (the
+    // short-term consecutive-attempt penalty above): that one reacts within
+    // a few tries and drives the hard blacklist, this one is a slower-moving
+    // preference that only kicks in once an edge has a real track record.
+    int Pathfinder::EdgeReliabilityCost(const Edge& e) {
+        int total = (int)e.successCount + (int)e.failureCount;
+        const int kMinSamples = 4;
+        if (total < kMinSamples) return 0; // not enough data yet - don't guess
+
+        double failRate = (double)e.failureCount / (double)total;
+        int cost = (int)(failRate * 10.0 * g_config.edgeFailurePenalty);
+
+        // A high average completion time means the pet is fighting this edge
+        // (retries, drift correction) even on attempts that eventually count
+        // as a success.
+        if (e.avgDurationMs > 400.0f)
+            cost += (int)((e.avgDurationMs - 400.0f) / 25.0);
+
+        if (failRate < 0.15)
+            cost -= g_config.edgeSuccessBonus;
+
+        cost = (int)(cost * (g_config.reliabilityWeight / 100.0));
+
+        // Safety floor: reliability can only ever nudge cost, never make an
+        // edge look free or better than a fresh, unproven one by more than
+        // the configured bonus.
+        int floor = -g_config.edgeSuccessBonus;
+        if (cost < floor) cost = floor;
+        return cost;
     }
 
     // ---- edge construction --------------------------------------------------
@@ -148,14 +196,14 @@ namespace PetHelper {
         if (bLo > aHi)      gap = bLo - aHi;
         else if (aLo > bHi) gap = aLo - bHi;
 
-        // 2) JUMP UP
+        // 2) JUMP - jump across to another platform (up, flat, or slight descent)
         {
             int probe = Clamp(MidX(b), aLo, aHi);
-            int rise = YAtX(a, probe) - MidY(b);      // positive = b is above
-            if (rise > g_config.walkStepTol && rise <= g_config.jumpUpMax && gap <= g_config.jumpReachX) {
-                double rr = (double)rise / (double)g_config.jumpUpMax;
+            int rise = YAtX(a, probe) - MidY(b);      // positive = b is above, negative = b is below
+            if (abs(rise) <= g_config.jumpUpMax && gap <= g_config.jumpReachX) {
+                double rr = (double)abs(rise) / (double)g_config.jumpUpMax;
                 double gr = (double)gap / (double)g_config.jumpReachX;
-                if (rr * rr + gr * gr <= 1.0) {
+                if (rr * rr + gr * gr <= 1.5) {
                     int takeoff = (bLo > aHi) ? aHi : (aLo > bHi ? aLo : Clamp(MidX(b), aLo, aHi));
                     int landing = Clamp(takeoff, bLo, bHi);
                     if (!g_config.useWallCheck || SEH_CanGoThrough(takeoff, YAtX(a, takeoff), landing, YAtX(b, landing))) {
@@ -163,7 +211,7 @@ namespace PetHelper {
                         out.type = EDGE_JUMP;
                         out.takeoffX = takeoff;
                         out.landingX = landing;
-                        out.cost = g_config.costJump + rise + gap + 100;
+                        out.cost = g_config.costJump + abs(rise) + gap + 10;
                         return true;
                     }
                 }
@@ -350,6 +398,15 @@ namespace PetHelper {
                 g_pets[i].Reset();
             }
 
+            // Edge experience (successCount/failureCount/avgDurationMs) is
+            // already wiped for free - BuildAdjacency() just replaced every
+            // Edge above with a fresh default-constructed one. Target-level
+            // experience lives outside the foothold graph though, so it
+            // needs an explicit clear here to avoid judging a same-looking
+            // coordinate on a new map by an old map's history.
+            TargetManager::failHistory.clear();
+            TargetSelector::ClearCache();
+
             if (g_config.dumpMapGraph) {
                 char path[64];
                 sprintf_s(path, "ezorsia_map_dump_%u.txt", GetCurrentProcessId());
@@ -427,7 +484,8 @@ namespace PetHelper {
                 if (s_closed[e.to]) continue;
                 if (IsLinkBlacklisted(cur.idx, e.to)) continue;
 
-                int ng = s_gScore[cur.idx] + e.cost + e.failCount * g_config.edgeFailPenalty;
+                int ng = s_gScore[cur.idx] + e.cost + e.failCount * g_config.edgeFailPenalty
+                    + EdgeReliabilityCost(e);
                 if (ng < s_gScore[e.to]) {
                     s_gScore[e.to] = ng;
                     s_parent[e.to] = cur.idx;
@@ -467,7 +525,8 @@ namespace PetHelper {
         int total = 0;
         for (size_t i = 0; i < steps.size(); i++)
             if (steps[i].hasEdge)
-                total += steps[i].edge.cost + steps[i].edge.failCount * g_config.edgeFailPenalty;
+                total += steps[i].edge.cost + steps[i].edge.failCount * g_config.edgeFailPenalty
+                    + EdgeReliabilityCost(steps[i].edge);
         return total;
     }
 

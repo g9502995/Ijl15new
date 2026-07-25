@@ -221,26 +221,48 @@ namespace PetHelper {
         if (pet.pendingEdgeToIdx != -1) {
             int landedIdx = Pathfinder::FindFhIndex(curFh);
             int fromIdx = Pathfinder::FindFhIndex(pet.pendingEdgeFromFh);
+            DWORD edgeDurationMs = nowT - pet.pendingEdgeSince;
             if (landedIdx == pet.pendingEdgeToIdx) {
                 pet.edgeFailStreak = 0;
-                if (fromIdx >= 0) Pathfinder::RecordEdgeOutcome(fromIdx, pet.pendingEdgeToIdx, true);
+                if (fromIdx >= 0) Pathfinder::RecordEdgeOutcome(fromIdx, pet.pendingEdgeToIdx, true, edgeDurationMs, logNow);
             }
             else if (curFh == pet.pendingEdgeFromFh) {
                 // Bounced right back to where we took off: a clean failed attempt.
                 pet.edgeFailStreak++;
-                if (fromIdx >= 0) Pathfinder::RecordEdgeOutcome(fromIdx, pet.pendingEdgeToIdx, false);
+                if (fromIdx >= 0) Pathfinder::RecordEdgeOutcome(fromIdx, pet.pendingEdgeToIdx, false, edgeDurationMs, logNow);
                 if (pet.edgeFailStreak >= g_config.edgeFailThreshold) {
-                    if (pet.pendingEdgeToIdx >= 0 && pet.pendingEdgeToIdx < (int)Pathfinder::fh.size()) {
-                        Pathfinder::BlacklistLink(pet.pendingEdgeFromFh,
-                            Pathfinder::fh[pet.pendingEdgeToIdx].fh, nowT);
-                    }
+                    void* failedFromFh = pet.pendingEdgeFromFh;
+                    void* failedToFh = (pet.pendingEdgeToIdx >= 0 && pet.pendingEdgeToIdx < (int)Pathfinder::fh.size())
+                        ? Pathfinder::fh[pet.pendingEdgeToIdx].fh : NULL;
+                    if (failedToFh) Pathfinder::BlacklistLink(failedFromFh, failedToFh, nowT);
                     pet.route.valid = false;
                     pet.edgeFailStreak = 0;
-                    if (pet.targetX != -1) {
+
+                    // A repeatedly-failing edge shouldn't cost the whole
+                    // target if there's another way to reach it - only give
+                    // up on the drop when banning this edge leaves no route
+                    // at all. Otherwise just let the next frame replan
+                    // around it and keep trying.
+                    bool hasAlternateRoute = false;
+                    if (pet.targetX != -1 && failedFromFh) {
+                        void* goalFh = SEH_GetFootholdUnder(pet.targetX, pet.targetY - 5, NULL);
+                        if (!goalFh) goalFh = SEH_GetFootholdClosest(pet.targetX, pet.targetY);
+                        if (goalFh) {
+                            std::vector<RouteStep> altSteps;
+                            hasAlternateRoute = (goalFh == failedFromFh) ||
+                                Pathfinder::FindRoute(failedFromFh, goalFh, altSteps);
+                        }
+                    }
+
+                    if (!hasAlternateRoute && pet.targetX != -1) {
                         TargetManager::BlacklistDrop(pet.targetX, pet.targetY, nowT);
                         TargetManager::ClearTarget(petIdx);
+                        if (logNow) std::cout << "[T] edge failed " << g_config.edgeFailThreshold
+                            << "x in a row, no alternate route, drop banned\n";
+                    } else if (logNow) {
+                        std::cout << "[T] edge failed " << g_config.edgeFailThreshold
+                            << "x in a row, link banned, retrying via alternate route\n";
                     }
-                    if (logNow) std::cout << "[T] edge failed " << g_config.edgeFailThreshold << "x in a row, banned\n";
                 }
             }
             // Landed somewhere else entirely (drifted onto a third foothold):
@@ -260,6 +282,7 @@ namespace PetHelper {
 
         bool onRoute = pet.route.valid && pet.route.steps.size() > 1;
         bool followingUser = false;
+        bool haveDropTarget = false;
         int  tx = 0, ty = 0;
 
         if (pet.targetX != -1) {
@@ -273,37 +296,19 @@ namespace PetHelper {
                 }
             }
             pet.noDropSince = 0;
+            haveDropTarget = true;
         }
-        else if (!drops.empty()) {
-            int pick = 0;
-            if ((int)drops.size() > 1 && startFh) {
-                int bestCost = INT_MAX;
-                int bestPick = 0;
-                int considered = (int)drops.size();
-                if (considered > g_config.targetCostCandidates) considered = g_config.targetCostCandidates;
-                for (int i = 0; i < considered; i++) {
-                    void* dGoalFh = SEH_GetFootholdUnder(drops[i].x, drops[i].y - 5, NULL);
-                    if (!dGoalFh) dGoalFh = SEH_GetFootholdClosest(drops[i].x, drops[i].y);
-
-                    int cost;
-                    if (!dGoalFh) {
-                        cost = INT_MAX;
-                    } else if (dGoalFh == startFh) {
-                        cost = 0;
-                    } else {
-                        std::vector<RouteStep> tmpSteps;
-                        cost = Pathfinder::FindRoute(startFh, dGoalFh, tmpSteps)
-                            ? Pathfinder::RouteCost(tmpSteps) : INT_MAX;
-                    }
-                    if (cost < bestCost) { bestCost = cost; bestPick = i; }
-                }
-                pick = bestPick;
+        else if (!drops.empty() && startFh) {
+            int bestX = 0, bestY = 0;
+            if (TargetSelector::SelectBestTarget(petIdx, startFh, drops, nowT, logNow, bestX, bestY)) {
+                tx = bestX;
+                ty = bestY;
+                pet.noDropSince = 0;
+                haveDropTarget = true;
             }
-            tx = drops[pick].x;
-            ty = drops[pick].y;
-            pet.noDropSince = 0;
         }
-        else {
+
+        if (!haveDropTarget) {
             if (pet.noDropSince == 0) pet.noDropSince = nowT;
             if (nowT - pet.noDropSince < g_config.noDropGraceMs) {
                 PetController::ApplyMove(pThis, petIdx, pet.lastDir, 0, petX, petY);
@@ -438,7 +443,24 @@ namespace PetHelper {
         const char* modeName = "goal";
 
         if (step.hasEdge) {
-            bool atTakeoff = (abs(petX - step.edge.takeoffX) <= g_config.actionMargin);
+            bool atTakeoff;
+            if (step.edge.type == EDGE_JUMP && step.edge.landingX != step.edge.takeoffX) {
+                // MakeEdge validated this jump's horizontal gap assuming
+                // take-off happens exactly at takeoffX (the platform edge).
+                // A symmetric tolerance here would let the pet trigger the
+                // jump up to actionMargin px *short* of that edge, which
+                // silently makes the real gap it has to cross bigger than
+                // what was validated - exactly the "distance is judged
+                // badly" failure on jump-up-onto-another-platform edges.
+                // Only allow triggering at/after the edge (tiny slop for
+                // pixel rounding); overshoot is harmless since it only
+                // shrinks the gap left to cross.
+                int jumpDir = (step.edge.landingX > step.edge.takeoffX) ? 1 : -1;
+                int aheadBy = (petX - step.edge.takeoffX) * jumpDir;
+                atTakeoff = (aheadBy >= -2) && (aheadBy <= g_config.actionMargin);
+            } else {
+                atTakeoff = (abs(petX - step.edge.takeoffX) <= g_config.actionMargin);
+            }
 
             if (step.edge.type == EDGE_ROPE) {
                 modeName = "rope";
@@ -602,6 +624,8 @@ namespace PetHelper {
         // DROP_BLACKLIST_FOREVER one) must not leak into the next map and
         // misjudge an unrelated item that happens to share the same (x,y).
         TargetManager::dropBlacklist.clear();
+        TargetManager::failHistory.clear();
+        TargetSelector::ClearCache();
         Original_CField_Init_Trampoline(pThis, edxDummy, arg0);
         g_isMapTransitioning = false;
     }
