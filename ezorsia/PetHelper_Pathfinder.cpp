@@ -253,8 +253,8 @@ namespace PetHelper {
         int bestIdx = -1;
         int minDiffY = 9999;
         for (int i = 0; i < (int)fh.size(); i++) {
-            // Allow 20px horizontal margin around foothold bounds for ladders/ropes attached to edges
-            if (x < LoX(fh[i]) - 20 || x > HiX(fh[i]) + 20) continue;
+            // Allow 40px horizontal margin around foothold bounds for ladders/ropes attached to edges
+            if (x < LoX(fh[i]) - 40 || x > HiX(fh[i]) + 40) continue;
             int fhY = YAtX(fh[i], Clamp(x, LoX(fh[i]), HiX(fh[i])));
             int diffY = abs(fhY - y);
             if (diffY <= tol && diffY < minDiffY) {
