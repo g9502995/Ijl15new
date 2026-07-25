@@ -443,10 +443,11 @@ namespace PetHelper {
             }
             else if (step.edge.type == EDGE_JUMP) {
                 modeName = "jump";
-                wantX = step.edge.takeoffX;
                 if (atTakeoff || forceJump) {
                     kind = 1;
                     wantX = step.edge.landingX;
+                } else {
+                    wantX = step.edge.takeoffX;
                 }
             }
             else if (step.edge.type == EDGE_DROP) {
@@ -493,8 +494,8 @@ namespace PetHelper {
 
         if (kind != 0 && step.hasEdge) {
             int aim = step.edge.landingX;
-            if (abs(aim - petX) > g_config.aimTol) {
-                dir = (aim > petX) ? 1 : -1;
+            if (step.edge.type == EDGE_JUMP || abs(aim - petX) > g_config.aimTol) {
+                dir = (aim >= petX) ? 1 : -1;
                 pet.lastDir = dir;
             }
         }
