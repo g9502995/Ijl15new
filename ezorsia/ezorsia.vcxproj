@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{0F213461-B82B-44EB-9585-761A2EDFC945}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ezorsia</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>ijl15</TargetName>
+    <ExecutablePath>$(ExecutablePath)</ExecutablePath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <LibraryWPath>$(LibraryWPath)</LibraryWPath>
+    <SourcePath>$(SourcePath)</SourcePath>
+    <ExcludePath>$(ExcludePath)</ExcludePath>
+    <OutDir>$(SolutionDir)\out\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>ijl15</TargetName>
+    <OutDir>$(SolutionDir)\out\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;EZORSIA_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <AdditionalOptions>-D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
+      <FS>true</FS>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)\comsuppwd;$(SolutionDir)\detours;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>detours.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;EZORSIA_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <FS>true</FS>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;EZORSIA_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FS>true</FS>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>detours.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\detours;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;EZORSIA_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <FS>true</FS>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="AddyLocations.h">
+      <FileType>CppHeader</FileType>
+    </ClInclude>
+    <ClInclude Include="BossHP.h" />
+    <ClInclude Include="CustomAutoAssignHook.h" />
+    <ClInclude Include="CustomEquipTooltipHook.h" />
+    <ClInclude Include="CustomUserInfoDetailTooltip.h" />
+    <ClInclude Include="HpMpAlert.h" />
+    <ClInclude Include="Client.h" />
+    <ClInclude Include="FixBuddy.h" />
+    <ClInclude Include="FixIme.h" />
+    <ClInclude Include="ijl15.h" />
+    <ClInclude Include="MapleClientCollectionTypes\TSecType.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZAllocAnonSelector.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZAllocBase.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZAllocEx.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZAllocStrSelector.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZArray.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZFatalSection.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZList.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZMap.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRecyclable.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRecyclableAvBuffer.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRecyclableStatic.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRef.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRefCounted.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRefCountedAccessor.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZRefCountedDummy.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZtlSecure.h" />
+    <ClInclude Include="MapleClientCollectionTypes\ZXString.h" />
+    <ClInclude Include="detours.h" />
+    <ClInclude Include="detver.h" />
+    <ClInclude Include="dllmain.h" />
+    <ClInclude Include="codecaves.h" />
+    <ClInclude Include="ReplacementFuncs.h" />
+    <ClInclude Include="INIReader.h" />
+    <ClInclude Include="Memory.h" />
+    <ClInclude Include="NMCO.h" />
+    <ClInclude Include="AutoTypes.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="PetHelper.h" />
+    <ClInclude Include="syelog.h" />
+    <ClInclude Include="targetver.h" />
+	<ClInclude Include="TooltipHook.h" />
+    <ClInclude Include="vendor\d3d8to9\d3d8.hpp" />
+    <ClInclude Include="vendor\d3d8to9\d3d8to9.hpp" />
+    <ClInclude Include="vendor\d3d8to9\d3d8types.hpp" />
+    <ClInclude Include="vendor\d3d8to9\d3dx9.hpp" />
+    <ClInclude Include="vendor\d3d8to9\interface_query.hpp" />
+    <ClInclude Include="vendor\imgui\imconfig.h" />
+    <ClInclude Include="vendor\imgui\imgui.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_dx9.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="vendor\imgui\imgui_internal.h" />
+    <ClInclude Include="vendor\imgui\imstb_rectpack.h" />
+    <ClInclude Include="vendor\imgui\imstb_textedit.h" />
+    <ClInclude Include="vendor\imgui\imstb_truetype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BossHP.cpp" />
+	<ClCompile Include="D3DHook.cpp" />
+    <ClCompile Include="CustomAutoAssignHook.cpp" />
+    <ClCompile Include="CustomEquipTooltipHook.cpp" />
+    <ClCompile Include="CustomUserInfoDetailTooltip.cpp" />
+    <ClCompile Include="HpMpAlert.cpp" />
+    <ClCompile Include="Client.cpp" />
+    <ClCompile Include="ijl15.cpp" />
+	<ClCompile Include="SetItemPanel.cpp" />
+    <ClCompile Include="TooltipHook.cpp" />
+    <ClCompile Include="vendor\d3d8to9\d3d8to9.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_base.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_device.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_index_buffer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_surface.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_swap_chain.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_texture.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_vertex_buffer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8to9_volume.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\d3d8types.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\d3d8to9\interface_query.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_demo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_draw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_dx9.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_win32.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_tables.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+    <ClCompile Include="ZAllocEx.cpp" />
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="PetHelper.cpp" />
+    <ClCompile Include="PetHelper_Debug.cpp" />
+    <ClCompile Include="PetHelper_TargetManager.cpp" />
+    <ClCompile Include="PetHelper_SEH.cpp" />
+    <ClCompile Include="PetHelper_Pathfinder.cpp" />
+    <ClCompile Include="PetHelper_MiscHooks.cpp" />
+    <ClCompile Include="PetHelper_Controller.cpp" />
+    <ClCompile Include="NMCO.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <FS>true</FS>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ezorsia.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="config.ini">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
