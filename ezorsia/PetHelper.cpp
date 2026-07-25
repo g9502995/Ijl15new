@@ -116,7 +116,31 @@ namespace PetHelper {
             if (logNow) std::cout << "[T] GetPetPos FAILED\n";
             return false;
         }
-        pet.slotPrimed = true;
+        // ---- Active rope climbing state step ------------------------------------
+        if (pet.isClimbingRope) {
+            int distToGoal = abs(petY - pet.ropeTargetY);
+            if (distToGoal <= 12) {
+                // Reached destination foothold on rope: complete climb
+                g_SetActive(pThis, 1, petX, pet.ropeTargetY - 5, 0, 0, 0, pet.ropeTargetFh);
+                pet.isClimbingRope = false;
+                pet.ropeTargetFh = NULL;
+                pet.lastMoveT = nowT;
+                pet.route.valid = false;
+                if (logNow) std::cout << "[T] rope climb finished -> y=" << pet.ropeTargetY << "\n";
+                return true;
+            } else {
+                // Smoothly step vertical position along rope
+                int dy = (pet.ropeTargetY > petY) ? 8 : -8;
+                int nextY = petY + dy;
+                if ((dy < 0 && nextY < pet.ropeTargetY) || (dy > 0 && nextY > pet.ropeTargetY)) {
+                    nextY = pet.ropeTargetY;
+                }
+                g_SetActive(pThis, 1, petX, nextY, 0, 0, 0, NULL);
+                pet.lastMoveT = nowT;
+                if (logNow) std::cout << "[T] rope climbing y=" << nextY << " targetY=" << pet.ropeTargetY << "\n";
+                return true;
+            }
+        }
 
         void* pUser = *(void**)((char*)pCPet + CPET_OWNER);
         void* userVec = NULL;
@@ -407,11 +431,12 @@ namespace PetHelper {
                     int ti = step.edge.to;
                     if (ti >= 0 && ti < (int)Pathfinder::fh.size()) {
                         int landY = Pathfinder::YAtX(Pathfinder::fh[ti], step.edge.landingX);
-                        g_SetActive(pThis, 1, step.edge.landingX, landY - 5, 0, 0, 0,
-                            Pathfinder::fh[ti].fh);
+                        pet.isClimbingRope = true;
+                        pet.ropeStartY = petY;
+                        pet.ropeTargetY = landY;
+                        pet.ropeTargetFh = Pathfinder::fh[ti].fh;
                         pet.lastMoveT = nowT;
-                        pet.route.valid = false;
-                        if (logNow) std::cout << "[T] rope climb -> (" << step.edge.landingX << "," << landY << ")\n";
+                        if (logNow) std::cout << "[T] rope climb start -> (" << step.edge.landingX << "," << landY << ")\n";
                         return true;
                     }
                 }

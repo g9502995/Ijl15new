@@ -299,6 +299,12 @@ namespace PetHelper {
         DWORD pendingEdgeSince = 0;
         int   edgeFailStreak = 0;
 
+        // Rope climbing animation state
+        bool  isClimbingRope = false;
+        int   ropeTargetY = 0;
+        int   ropeStartY = 0;
+        void* ropeTargetFh = NULL;
+
         void Reset() {
             pCPet = NULL;
             pVecCtrl = NULL;
@@ -309,6 +315,11 @@ namespace PetHelper {
             hasTelescope = false;
             slotPrimed = false;
             boosting = false;
+
+            isClimbingRope = false;
+            ropeTargetY = 0;
+            ropeStartY = 0;
+            ropeTargetFh = NULL;
 
             targetX = -1;
             targetY = -1;
