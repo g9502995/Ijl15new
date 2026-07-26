@@ -134,13 +134,23 @@ namespace PetHelper {
         if (pet.isClimbingRope) {
             int distToGoal = abs(petY - pet.ropeTargetY);
             if (distToGoal <= 12) {
-                // Reached destination foothold on rope: complete climb
-                g_SetActive(pThis, 1, pet.ropeX, pet.ropeTargetY - 5, 0, 0, 0, pet.ropeTargetFh);
+                // Reached destination foothold on rope: complete climb on precise foothold Y
+                int exactLandY = pet.ropeTargetY;
+                if (pet.ropeTargetFh) {
+                    int x1, y1, x2, y2, attr;
+                    if (SEH_ReadFoothold(pet.ropeTargetFh, &x1, &y1, &x2, &y2, &attr) && x1 != x2) {
+                        int minX = x1 < x2 ? x1 : x2;
+                        int maxX = x1 < x2 ? x2 : x1;
+                        int cx = (pet.ropeX < minX) ? minX : ((pet.ropeX > maxX) ? maxX : pet.ropeX);
+                        exactLandY = y1 + (int)((long long)(y2 - y1) * (cx - x1) / (x2 - x1));
+                    }
+                }
+                g_SetActive(pThis, 1, pet.ropeX, exactLandY - 2, 0, 0, 0, pet.ropeTargetFh);
                 pet.isClimbingRope = false;
                 pet.ropeTargetFh = NULL;
                 pet.lastMoveT = nowT;
                 pet.route.valid = false;
-                if (logNow) std::cout << "[T] rope climb finished -> y=" << pet.ropeTargetY << "\n";
+                if (logNow) std::cout << "[T] rope climb finished -> (" << pet.ropeX << "," << exactLandY << ")\n";
                 return true;
             } else {
                 // Smoothly step vertical position along rope
