@@ -214,6 +214,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="PetHelper.h" />
+    <ClInclude Include="PetAIChat.h" />
     <ClInclude Include="syelog.h" />
     <ClInclude Include="targetver.h" />
 	<ClInclude Include="TooltipHook.h" />
@@ -242,6 +243,7 @@
     <ClCompile Include="ijl15.cpp" />
 	<ClCompile Include="SetItemPanel.cpp" />
     <ClCompile Include="TooltipHook.cpp" />
+    <ClCompile Include="PetAIChat.cpp" />
     <ClCompile Include="vendor\d3d8to9\d3d8to9.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <FS>true</FS>
