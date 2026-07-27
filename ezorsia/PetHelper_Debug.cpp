@@ -24,8 +24,10 @@ namespace PetHelper {
 
     void DrawPetHelperDebugImGui()
     {
-        if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) s_showDebug = !s_showDebug;
-        if (!s_showDebug) return;
+        // F9 開啟 DEBUG 關掉：直接退出，不回應 F9 按鍵與繪製
+        return;
+        // if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) s_showDebug = !s_showDebug;
+        // if (!s_showDebug) return;
 
         ImGui::SetNextWindowSize(ImVec2(860, 620), ImGuiCond_FirstUseEver);
         if (!ImGui::Begin("Pet Pathfinding Debug (F9 to hide)", &s_showDebug)) {

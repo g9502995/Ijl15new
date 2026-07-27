@@ -246,7 +246,7 @@ namespace PetHelper {
         int   pathMaxNodes = 512;
 
         bool  requireTelescope = true;
-        bool  debugPathfind = true;
+        bool  debugPathfind = false;
         bool  dumpMapGraph = false;
         DWORD debugIntervalMs = 1000;
         DWORD routeGiveupMs = 9000;

@@ -74,9 +74,10 @@ static std::string ResolveToIpv4String(const std::string& hostOrIp)
 }
 
 void CreateConsole() {
-	AllocConsole();
-	FILE* stream;
-	freopen_s(&stream, "CONOUT$", "w", stdout); //CONOUT$
+	// 關掉 CONSOLE：不分配主控台視窗
+	//AllocConsole();
+	//FILE* stream;
+	//freopen_s(&stream, "CONOUT$", "w", stdout); //CONOUT$
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
