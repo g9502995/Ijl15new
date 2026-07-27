@@ -704,7 +704,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::EndScene()
 	ImGui::NewFrame();
 	
 	DrawSetItemImGui();
-	PetHelper::DrawPetHelperDebugImGui();
+	// PetHelper::DrawPetHelperDebugImGui(); // 徹底關閉 F9 DEBUG IMGUI 繪製呼叫
 
     // D3D9 Damage Renderer
 	ImGui::Render();
