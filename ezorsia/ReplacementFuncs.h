@@ -1026,7 +1026,7 @@ KeyValuePair newKeyValuePairs[] = {
     {941, "请选择...."},
     {942, "男"},
     {943, "女"},
-    {1163, "冒险岛"},
+    //{1163, "\u5192\u96AA\u5CF6"},
     {1369, "您所选择的游戏区人数较多，建议您选择其他区创建角色或进行游戏"},
     {1370, "您所选择的游戏区已经人满，请您选择其他区创建角色或进行游戏"},
     {1392, "广告窗被关掉。"},
@@ -2179,12 +2179,23 @@ bool Hook_StringPool__GetString(bool bEnable)	//hook stringpool modification //t
 			//	if (EzorsiaV2WzIncluded && ownCashShopFrame) { *ret = ("UI/MapleEzorsiaV2wzfiles.img/Base/backgrnd1"); } break;
 			//case 5361:	//SP_1937_UI_UIWINDOWIMG_STAT_BACKGRND2  = 791h	
 			//	if (EzorsiaV2WzIncluded && ownCashShopFrame) { *ret = ("UI/MapleEzorsiaV2wzfiles.img/Base/backgrnd2"); } break;
+            case 1163:
+            {
+                // 使用 UnicodeHook::RealWideCharToMultiByte 繞過我們自己的 UTF-8 Hook，
+                // 真正將 L"冒險島" 轉為系統預設 ANSI Codepage (繁體 Windows 下為 Big5，簡體下為 GBK)
+                static char ansiTitle[32] = { 0 };
+                if (ansiTitle[0] == '\0') {
+                    UnicodeHook::RealWideCharToMultiByte(CP_ACP, 0, L"\u5192\u96AA\u5CF6", -1, ansiTitle, sizeof(ansiTitle), NULL, NULL);
+                }
+                *ret = ansiTitle;
+            }
+            break;
 			default:
 				if (Client::SwitchChinese)
 				{
 					for (const auto& pair : newKeyValuePairs) {
 						if (nIdx == pair.key) {
-							*ret = pair.value.c_str();
+                            *ret = UnicodeHook::GbkToUtf8(pair.value).c_str();
 							break;
 						}
 					}

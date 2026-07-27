@@ -6,4 +6,6 @@ namespace PetAIChat {
     void SetApiKey(const std::string& key);
     void OnPlayerChat(const std::string& message);
     void MakePetSay(int petIdx, const std::string& text);
+    void PumpPendingSpeech();
+    bool Hook_SendChatMsg(bool bEnable);
 }

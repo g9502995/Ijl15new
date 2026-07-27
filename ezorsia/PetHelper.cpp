@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "PetHelper.h"
 #include "PetHelper_Internal.h"
+#include "PetAIChat.h"
 
 // ===========================================================================
 //  PetHelper.cpp - per-frame AI orchestration + hook install.
@@ -35,6 +36,7 @@ namespace PetHelper {
     bool            g_forceMapRebuild = false;
     volatile bool   g_isMapTransitioning = false;
     PetSlotContext  g_pets[3];
+    void*           g_lastActivePet = nullptr;
 
     // Dummy array proxies for header backward-compatibility references
     static bool s_cachedHasTelescopeDummy[3] = { false, false, false };
@@ -92,6 +94,7 @@ namespace PetHelper {
             pet.pVecCtrl = pThis;
             pet.slotPrimed = false;
         }
+        g_lastActivePet = pCPet;
 
         if (logNow) std::cout << "[PetAI] petIdx=" << petIdx << "\n";
 
@@ -411,6 +414,34 @@ namespace PetHelper {
                 wantX = tx + (petIdx == 1 ? -30 : (petIdx == 2 ? 30 : 0));
             }
 
+            // Clamp to the foothold's own X span. SEH_GetFootholdUnder(tx, ty-5)
+            // above only checks that the drop rests near *some* foothold's Y at
+            // that X - it never checks tx actually falls within that foothold's
+            // x1..x2. If it doesn't (drop sitting right at/past a platform's
+            // tip, or two overlapping footholds near a seam), wantX points past
+            // the platform edge: SteerTo never reaches its arriveTol dead zone,
+            // stuckMs eventually trips forceJump, and the pet jumps off the map
+            // chasing a point that was never actually on this platform.
+            {
+                int fx1 = 0, fy1 = 0, fx2 = 0, fy2 = 0, fattr = 0;
+                if (SEH_ReadFoothold(startFh, &fx1, &fy1, &fx2, &fy2, &fattr)) {
+                    int loX = (fx1 < fx2) ? fx1 : fx2;
+                    int hiX = (fx1 < fx2) ? fx2 : fx1;
+                    int clampedWantX = Pathfinder::Clamp(wantX, loX, hiX);
+                    if (!followingUser && abs(clampedWantX - tx) > g_config.arriveTol) {
+                        // The drop itself is off this foothold's span - unreachable
+                        // from here. Give up on it instead of walking to the edge.
+                        TargetManager::BlacklistDrop(tx, ty, nowT);
+                        TargetManager::ClearTarget(petIdx);
+                        pet.lastMoveT = nowT;
+                        pet.route.valid = false;
+                        if (logNow) std::cout << "[T] drop off foothold span, gave up\n";
+                        return false;
+                    }
+                    wantX = clampedWantX;
+                }
+            }
+
             int dir = PetController::SteerTo(petIdx, petX, wantX);
             if (dir == 0) { pet.lastMoveT = nowT; forceJump = false; }
             pet.wantGap = abs(wantX - petX);
@@ -503,7 +534,11 @@ namespace PetHelper {
                 modeName = "drop";
                 wantX = step.edge.takeoffX;
                 if (atTakeoff || forceJump) {
-                    kind = g_config.useDownjump ? 2 : 0;
+                    // 只有當「起跳點 takeoffX 與落點 landingX 幾乎在同一個 X 軸位置 (水平重疊/正下方)」時，
+                    // 才可以使用垂直下跳 (kind = 2)；
+                    // 若落點在遠處 (懸崖/間距)，必須使用自然走下懸崖 (kind = 0)，帶著水平速度飛越間距落到對面！
+                    bool isDirectlyBelow = (abs(step.edge.landingX - step.edge.takeoffX) <= g_config.aimTol);
+                    kind = (g_config.useDownjump && isDirectlyBelow) ? 2 : 0;
                     if (kind != 2) wantX = step.edge.landingX;
                 }
             }
@@ -543,9 +578,23 @@ namespace PetHelper {
 
         if (kind != 0 && step.hasEdge) {
             int aim = step.edge.landingX;
-            if (step.edge.type == EDGE_JUMP || abs(aim - petX) > g_config.aimTol) {
+            // A jump edge only needs a forced left/right direction when the
+            // landing is actually offset from the takeoff horizontally (a
+            // diagonal/gap jump), or the pet isn't yet aligned under aim.
+            // Previously `step.edge.type == EDGE_JUMP ||` forced dir to 1/-1
+            // for EVERY jump edge, even a straight-up jump onto an
+            // overlapping platform directly above (landingX == takeoffX).
+            // Combined with airLockMs locking that direction in for 300ms,
+            // a vertical jump got shoved sideways in mid-air and overshot
+            // past the destination platform's edge - the actual cause of
+            // "jumps up but flies off the map" for stacked/overlapping
+            // footholds.
+            bool diagonalJump = abs(step.edge.landingX - step.edge.takeoffX) > g_config.aimTol;
+            if (diagonalJump || abs(aim - petX) > g_config.aimTol) {
                 dir = (aim >= petX) ? 1 : -1;
                 pet.lastDir = dir;
+            } else {
+                dir = 0;
             }
         }
 
@@ -577,6 +626,11 @@ namespace PetHelper {
 
     int __fastcall Hooked_WorkUpdateActive(void* pThis, void* edxDummy, int tElapse)
     {
+        // Runs on the main thread (this is the pet's own per-frame update
+        // hook) - the one safe place to let a queued Gemini reply actually
+        // call CPet::DoAction.
+        PetAIChat::PumpPendingSpeech();
+
         if (MyPetAI_Update_Inner(pThis)) {
             bool wantBoost = false;
             const int BOOST_MIN_GAP = 120;

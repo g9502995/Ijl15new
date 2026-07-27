@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -215,6 +215,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="PetHelper.h" />
     <ClInclude Include="PetAIChat.h" />
+    <ClInclude Include="UnicodeHook.h" />
     <ClInclude Include="syelog.h" />
     <ClInclude Include="targetver.h" />
 	<ClInclude Include="TooltipHook.h" />
@@ -244,6 +245,7 @@
 	<ClCompile Include="SetItemPanel.cpp" />
     <ClCompile Include="TooltipHook.cpp" />
     <ClCompile Include="PetAIChat.cpp" />
+    <ClCompile Include="UnicodeHook.cpp" />
     <ClCompile Include="vendor\d3d8to9\d3d8to9.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <FS>true</FS>

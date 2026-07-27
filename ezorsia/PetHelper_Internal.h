@@ -399,6 +399,7 @@ namespace PetHelper {
     };
 
     extern PetSlotContext g_pets[3];
+    extern void*           g_lastActivePet;
 
     // Backward-compatibility references for existing code
     extern bool (&cachedHasTelescope)[3];

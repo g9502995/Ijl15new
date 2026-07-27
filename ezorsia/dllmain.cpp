@@ -3,6 +3,7 @@
 #include "NMCO.h"
 #include "ijl15.h"
 #include "INIReader.h"
+#include "UnicodeHook.h"
 #include "ReplacementFuncs.h"
 #include <comutil.h>
 #include "BossHP.h"
@@ -14,6 +15,7 @@
 #include "D3DHook.h"
 #include "SetItemPanel.h"
 #include "PetHelper.h"
+#include "PetAIChat.h"
 
 // 宣告自定義 Tooltip 的初始化函數
 void AttachUIUserInfoDetail();
@@ -84,9 +86,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 	switch (ul_reason_for_call) {
 	case DLL_PROCESS_ATTACH:
 	{
-		// 打印窗口查看加载日志
-		//CreateConsole();	//console for devs, use this to log stuff if you want
-
+		CreateConsole();
+		SetConsoleOutputCP(CP_UTF8); // debug console prints raw UTF-8 (chat/PetAI logs) correctly instead of mojibake
 		INIReader reader("config.ini");
 		if (reader.ParseError() == 0) {
 			Client::m_nGameWidth = reader.GetInteger("general", "width", 1280);
@@ -153,6 +154,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 		// 啟動自定義角色裝備欄 Tooltip 的 Hook
 		//AttachUIUserInfoDetail();
 		
+		// Hook Pet AI Chat System
+		PetAIChat::Init();
+		PetAIChat::Hook_SendChatMsg(true);
+
+		// Apply Win32 Level Unicode & IME Hook
+		UnicodeHook::ApplyHooks();
+
 		//Hook_get_unknown(true);
 		//Hook_get_resource_object(true); //helper function hooks  //ty teto for helping me get started
 		//Hook_com_ptr_t_IWzProperty__ctor(true);
