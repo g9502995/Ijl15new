@@ -237,7 +237,7 @@ namespace PetHelper {
                         bool fitR = (bLo - g_config.dropReachX <= aHi && aHi <= bHi + g_config.dropReachX);
                         if (ledgeL[ia] && fitL) takeoff = aLo;
                         else if (ledgeR[ia] && fitR) takeoff = aHi;
-                        else if (g_config.useDownjump) takeoff = Clamp(MidX(b), aLo, aHi);
+                        else if (overlap) takeoff = Clamp(MidX(b), aLo, aHi); // 只有當平台真的在正下方 (有重疊 overlap) 時，才允許直接取中間點下跳！
                     }
 
                     if (takeoff >= 0) {

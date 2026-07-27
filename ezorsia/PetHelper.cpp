@@ -401,6 +401,25 @@ namespace PetHelper {
                 wantX = tx + (petIdx == 1 ? -30 : (petIdx == 2 ? 30 : 0));
             }
 
+            // Clamp to the foothold's own X span so the pet doesn't chase drops outside platform edges.
+            {
+                int fx1 = 0, fy1 = 0, fx2 = 0, fy2 = 0, fattr = 0;
+                if (SEH_ReadFoothold(startFh, &fx1, &fy1, &fx2, &fy2, &fattr)) {
+                    int loX = (fx1 < fx2) ? fx1 : fx2;
+                    int hiX = (fx1 < fx2) ? fx2 : fx1;
+                    int clampedWantX = Pathfinder::Clamp(wantX, loX, hiX);
+                    if (!followingUser && abs(clampedWantX - tx) > g_config.arriveTol) {
+                        TargetManager::BlacklistDrop(tx, ty, nowT);
+                        TargetManager::ClearTarget(petIdx);
+                        pet.lastMoveT = nowT;
+                        pet.route.valid = false;
+                        if (logNow) std::cout << "[T] drop off foothold span, gave up\n";
+                        return false;
+                    }
+                    wantX = clampedWantX;
+                }
+            }
+
             int dir = PetController::SteerTo(petIdx, petX, wantX);
             if (dir == 0) { pet.lastMoveT = nowT; forceJump = false; }
             pet.wantGap = abs(wantX - petX);
@@ -493,7 +512,8 @@ namespace PetHelper {
                 modeName = "drop";
                 wantX = step.edge.takeoffX;
                 if (atTakeoff || forceJump) {
-                    kind = g_config.useDownjump ? 2 : 0;
+                    bool isDirectlyBelow = (abs(step.edge.landingX - step.edge.takeoffX) <= g_config.aimTol);
+                    kind = (g_config.useDownjump && isDirectlyBelow) ? 2 : 0;
                     if (kind != 2) wantX = step.edge.landingX;
                 }
             }
@@ -533,9 +553,12 @@ namespace PetHelper {
 
         if (kind != 0 && step.hasEdge) {
             int aim = step.edge.landingX;
-            if (step.edge.type == EDGE_JUMP || abs(aim - petX) > g_config.aimTol) {
+            bool diagonalJump = abs(step.edge.landingX - step.edge.takeoffX) > g_config.aimTol;
+            if (diagonalJump || abs(aim - petX) > g_config.aimTol) {
                 dir = (aim >= petX) ? 1 : -1;
                 pet.lastDir = dir;
+            } else {
+                dir = 0;
             }
         }
 
