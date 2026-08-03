@@ -457,109 +457,32 @@ namespace PetHelper {
             if (logNow) std::cout << "[T] link unusable, banned\n";
             return false;
         }
-        int wantX = tx;
-        int kind = 0;
-        const char* modeName = "goal";
+        SteeringOutput s = MotionPlanner::Compute(petX, petY, curFh == NULL, step, tx, nowT, pet);
+        int dir = s.dir;
+        int kind = s.kind;
 
-        if (step.hasEdge) {
-            bool atTakeoff;
-            if (step.edge.type == EDGE_JUMP && step.edge.landingX != step.edge.takeoffX) {
-                // MakeEdge validated this jump's horizontal gap assuming
-                // take-off happens exactly at takeoffX (the platform edge).
-                // A symmetric tolerance here would let the pet trigger the
-                // jump up to actionMargin px *short* of that edge, which
-                // silently makes the real gap it has to cross bigger than
-                // what was validated - exactly the "distance is judged
-                // badly" failure on jump-up-onto-another-platform edges.
-                // Only allow triggering at/after the edge (tiny slop for
-                // pixel rounding); overshoot is harmless since it only
-                // shrinks the gap left to cross.
-                int jumpDir = (step.edge.landingX > step.edge.takeoffX) ? 1 : -1;
-                int aheadBy = (petX - step.edge.takeoffX) * jumpDir;
-                atTakeoff = (aheadBy >= -2) && (aheadBy <= g_config.actionMargin);
-            } else {
-                atTakeoff = (abs(petX - step.edge.takeoffX) <= g_config.actionMargin);
-            }
-
-            if (step.edge.type == EDGE_ROPE) {
-                modeName = "rope";
-                wantX = step.edge.takeoffX;
-                if (atTakeoff || forceJump) {
-                    int ti = step.edge.to;
-                    if (ti >= 0 && ti < (int)Pathfinder::fh.size()) {
-                        int landY = Pathfinder::YAtX(Pathfinder::fh[ti], step.edge.landingX);
-                        pet.isClimbingRope = true;
-                        pet.ropeX = step.edge.takeoffX;
-                        pet.ropeStartY = petY;
-                        pet.ropeTargetY = landY;
-                        pet.ropeTargetFh = Pathfinder::fh[ti].fh;
-                        pet.lastMoveT = nowT;
-                        if (logNow) std::cout << "[T] rope climb start -> (" << step.edge.landingX << "," << landY << ")\n";
-                        return true;
-                    }
-                }
-            }
-            else if (step.edge.type == EDGE_JUMP) {
-                modeName = "jump";
-                if (atTakeoff || forceJump) {
-                    kind = 1;
-                    wantX = step.edge.landingX;
-                } else {
-                    wantX = step.edge.takeoffX;
-                }
-            }
-            else if (step.edge.type == EDGE_DROP) {
-                modeName = "drop";
-                wantX = step.edge.takeoffX;
-                if (atTakeoff || forceJump) {
-                    bool isDirectlyBelow = (abs(step.edge.landingX - step.edge.takeoffX) <= g_config.aimTol);
-                    kind = (g_config.useDownjump && isDirectlyBelow) ? 2 : 0;
-                    if (kind != 2) wantX = step.edge.landingX;
-                }
-            }
-            else {
-                modeName = "walk";
-                int ti = step.edge.to;
-                if (ti >= 0 && ti < (int)Pathfinder::fh.size())
-                    wantX = Pathfinder::MidX(Pathfinder::fh[ti]);
-                else
-                    wantX = step.edge.landingX;
-                if (forceJump) kind = 1;
+        if (kind == 3) {
+            // Rope climb action
+            int ti = step.edge.to;
+            if (ti >= 0 && ti < (int)Pathfinder::fh.size()) {
+                int landY = Pathfinder::YAtX(Pathfinder::fh[ti], step.edge.landingX);
+                pet.isClimbingRope = true;
+                pet.ropeX = step.edge.takeoffX;
+                pet.ropeStartY = petY;
+                pet.ropeTargetY = landY;
+                pet.ropeTargetFh = Pathfinder::fh[ti].fh;
+                pet.lastMoveT = nowT;
+                if (logNow) std::cout << "[T] rope climb start -> (" << step.edge.landingX << "," << landY << ")\n";
+                return true;
             }
         }
-        else if (forceJump) {
-            kind = 1;
-        }
 
-        // Arm reliability tracking for a real jump / down-jump commit (rope
-        // teleports and plain walk-nudges never reach here - see above).
+        // Arm reliability tracking for a real jump / down-jump commit
         if (kind != 0 && step.hasEdge &&
             (step.edge.type == EDGE_JUMP || (step.edge.type == EDGE_DROP && kind == 2))) {
             pet.pendingEdgeFromFh = step.fh;
             pet.pendingEdgeToIdx  = step.edge.to;
             pet.pendingEdgeSince  = nowT;
-        }
-
-        int dir = PetController::SteerTo(petIdx, petX, wantX);
-
-        if (dir == 0 && kind == 0 && !step.hasEdge) pet.lastMoveT = nowT;
-
-        if (kind != 0 && dir == 0 &&
-            !(step.hasEdge && step.edge.type == EDGE_JUMP)) {
-            int nudge = step.hasEdge ? step.edge.landingX : tx;
-            dir = (nudge >= petX) ? 1 : -1;
-            pet.lastDir = dir;
-        }
-
-        if (kind != 0 && step.hasEdge) {
-            int aim = step.edge.landingX;
-            bool diagonalJump = abs(step.edge.landingX - step.edge.takeoffX) > g_config.aimTol;
-            if (diagonalJump || abs(aim - petX) > g_config.aimTol) {
-                dir = (aim >= petX) ? 1 : -1;
-                pet.lastDir = dir;
-            } else {
-                dir = 0;
-            }
         }
 
         if (logNow) {
