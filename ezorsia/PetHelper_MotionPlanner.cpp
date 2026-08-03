@@ -71,7 +71,8 @@ namespace PetHelper {
         int wantX = step.hasEdge ? step.edge.takeoffX : targetFinalX;
         if (step.hasEdge && step.edge.type == EDGE_WALK)
             wantX = step.edge.landingX;
-        s.dir = PetController::SteerTo(ctx, petX, wantX);
+        int pIdx = (int)(&ctx - g_pets);
+        s.dir = PetController::SteerTo(pIdx, petX, wantX);
 
         // ---- 4. Trigger jump/drop/rope action ----
         if (step.hasEdge) {

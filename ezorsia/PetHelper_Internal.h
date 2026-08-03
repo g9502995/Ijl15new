@@ -406,6 +406,28 @@ namespace PetHelper {
     extern int (&g_lastDir)[3];
 
     // ===========================================================================
+    //  MotionPlanner - Pure geometry & momentum control
+    // ===========================================================================
+    struct SteeringOutput {
+        int dir;        // -1, 0, 1
+        int kind;       // 0=none, 1=jump, 2=downjump, 3=rope
+        int overrideX;  // if > -9999, force override X
+        bool isAirborneCorrection;
+    };
+
+    class MotionPlanner {
+    public:
+        static SteeringOutput Compute(
+            int petX, int petY,
+            bool isAirborne,
+            const RouteStep& step,
+            int targetFinalX,
+            DWORD now,
+            PetSlotContext& ctx
+        );
+    };
+
+    // ===========================================================================
     //  TargetManager - drop scanning + per-pet target lock/blacklist
     // ===========================================================================
     class TargetManager {

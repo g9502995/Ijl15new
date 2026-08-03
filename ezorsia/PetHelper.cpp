@@ -460,6 +460,7 @@ namespace PetHelper {
         SteeringOutput s = MotionPlanner::Compute(petX, petY, curFh == NULL, step, tx, nowT, pet);
         int dir = s.dir;
         int kind = s.kind;
+        const char* modeName = step.hasEdge ? (step.edge.type == EDGE_JUMP ? "jump" : (step.edge.type == EDGE_DROP ? "drop" : (step.edge.type == EDGE_ROPE ? "rope" : "walk"))) : "goal";
 
         if (kind == 3) {
             // Rope climb action
