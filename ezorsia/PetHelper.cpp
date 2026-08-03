@@ -711,11 +711,6 @@ namespace PetHelper {
         BYTE patchYDown = (BYTE)(g_config.telescopePickupRangeYDown & 0xFF);
         PatchMemory(0x00508529 + 2, { patchYDown });
 
-        // Allow using items (like all-cure potion) and keys during SEDUCE, STUN, or StopPortion
-        PatchMemory(0x0094BE9C, { 0x33, 0xC0, 0xC3 }); // CUserLocal::IsAttract
-        PatchMemory(0x0094FA45, { 0x33, 0xC0, 0xC3 }); // CUserLocal::IsStopPortion
-        PatchMemory(0x0095F946, { 0x33, 0xC0, 0xC3 }); // CUserLocal::IsImmovable
-
         WriteHook();
         WriteUpdatePetAbilityHook();
         WritePetAIHook();
