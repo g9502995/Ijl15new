@@ -134,14 +134,19 @@ void BossHP::CreateToolTip(int instance)
 }
 
 int ReadInt(const DWORD dwAddress) {
+	if (!dwAddress || dwAddress == (DWORD)-1) return -1;
 	int nResult = -1;
 	DWORD dwOldProtect;
-	VirtualProtect((void*)dwAddress, sizeof(int), PAGE_EXECUTE_READ, &dwOldProtect);
-	nResult = *reinterpret_cast<unsigned int*>(dwAddress);
-	VirtualProtect((void*)dwAddress, sizeof(int), dwOldProtect, &dwOldProtect);
+	if (VirtualProtect((void*)dwAddress, sizeof(int), PAGE_EXECUTE_READ, &dwOldProtect)) {
+		nResult = *reinterpret_cast<unsigned int*>(dwAddress);
+		VirtualProtect((void*)dwAddress, sizeof(int), dwOldProtect, &dwOldProtect);
+	}
 	return nResult;
 }
 
 int BossHP::GetMiniMapWidth() {
-	return ReadInt(ReadInt(dw_TSingleton_CUIMiniMap___ms_pInstance) + 0x24); // 
+	int pInstance = ReadInt(dw_TSingleton_CUIMiniMap___ms_pInstance);
+	if (pInstance <= 0) return 0;
+	int width = ReadInt(pInstance + 0x24);
+	return width > 0 ? width : 0;
 }
