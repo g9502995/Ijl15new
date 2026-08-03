@@ -320,6 +320,7 @@
     <ClCompile Include="PetHelper.cpp" />
     <ClCompile Include="PetHelper_Debug.cpp" />
     <ClCompile Include="PetHelper_TargetManager.cpp" />
+    <ClCompile Include="PetHelper_MotionPlanner.cpp" />
     <ClCompile Include="PetHelper_TargetScoring.cpp" />
     <ClCompile Include="PetHelper_SEH.cpp" />
     <ClCompile Include="PetHelper_Pathfinder.cpp" />
